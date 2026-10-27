@@ -1,0 +1,1 @@
+{"id": "niranjaniyer/sh-r2-cnn-lane2", "title": "sh-r2-cnn-lane2", "code_file": "run.py", "language": "python", "kernel_type": "script", "is_private": true, "enable_gpu": true, "enable_internet": false, "dataset_sources": ["niranjaniyer/sh-r2-data", "niranjaniyer/sh-r2-code"], "competition_sources": [], "kernel_sources": []}

@@ -1,0 +1,13 @@
+# competition data, predictions and generated artefacts are never committed
+*.npy
+*.csv
+*.parquet
+*.pt
+cache/
+oof/
+ckpt/
+subs/
+results/
+modal_out/
+logs/
+__pycache__/
