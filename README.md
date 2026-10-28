@@ -7,8 +7,8 @@ noise, so the pipeline trains and validates against a simulated PKS signal-to-no
 This repository contains code and documentation only. No competition data, model weights or prediction files are
 included; everything is regenerated from the official data by the scripts below.
 
-Final upload: **U12 = stack `smx22_bag`** (21 CNN members + physics and panel-level features, LightGBM stacker
-averaged over 5 seeds; held-out simulator macro-F1 0.9512). Best public score before it: U10 `smx19_bag`, 0.9392. History and every decision with its evidence:
+Final upload: **U13 = stack `smx23_bag`** (22 CNN members + physics and panel-level features, LightGBM stacker
+averaged over 5 seeds; held-out simulator macro-F1 0.9521). Best public score before it: U10 / U12, 0.9392. History and every decision with its evidence:
 `SUBMISSIONS.md`, `LOG.md`, `LEARNINGS_AND_DECISIONS.md`.
 
 ## Pipeline
@@ -31,7 +31,7 @@ averaged over 5 seeds; held-out simulator macro-F1 0.9512). Best public score be
    `src/bag_stack.py`). Candidates are compared with a paired bootstrap on the held-out simulator (`src/paired.py`).
 6. **Submission** (`src/make_sub.py`): validated CSV (10,000 unique ids, valid labels, sample order).
 
-## Reproduce the final upload (U12, `smx22_bag`)
+## Reproduce the final upload (U13, `smx23_bag`)
 
 Place `train_cadences.npy`, `test_cadences.npy`, `train_meta.csv`, `test_meta.csv`, `sample_submission.csv` in the repo root.
 
@@ -72,17 +72,18 @@ or call `python src/cnn.py --name <name> --folds 0,1,2,3,4 <args>` locally):
 | n_effv2m_mix | `--arch timm:tf_efficientnetv2_m --epochs 25 --lr 1e-3 --bs 64 --snr_p 0.7 --snr_max 1.0 --lvch 1 --mixup 0.4 --pseudo oof/pseudo_smx14_a.npy` |
 | s_effv2l | `--arch timm:tf_efficientnetv2_l --epochs 25 --lr 1e-3 --bs 64 --snr_p 0.7 --snr_max 1.0 --lvch 1 --mixup 0.4 --pseudo oof/pseudo_smx17_bag.npy` |
 | s_effv2l_u10 | `--arch timm:tf_efficientnetv2_l --epochs 25 --lr 1e-3 --bs 64 --snr_p 0.7 --snr_max 1.0 --lvch 1 --mixup 0.4 --pseudo oof/pseudo_smx19_bag.npy` |
+| s_effv2l_u11 | `--arch timm:tf_efficientnetv2_l --epochs 25 --lr 1e-3 --bs 64 --snr_p 0.7 --snr_max 1.0 --lvch 1 --mixup 0.4 --pseudo oof/pseudo_smx20_bag.npy` |
 
 Pseudo-label files are the test probabilities of the previous best stack (`oof/<stack>__test.npy`), so members are
-trained in teacher order: stk_v3 → smx3 → smx4 → smx7a → smx8a → smx11_all → smx14_a → smx17_bag → smx19_bag, each
+trained in teacher order: stk_v3 → smx3 → smx4 → smx7a → smx8a → smx11_all → smx14_a → smx17_bag → smx19_bag → smx20_bag, each
 teacher built with `src/stack_mix.py` on the members that existed at that point (see `LOG.md`).
 
 ```bash
-M=cnn_v1,cnn_v4p,cnn_v4a,cnn_v4ap,cnn_v6,cnn_v7,n_pretrained,n_cnxt,s_regy,s_mbnv3,n_cnxtt,n_effb2,s_effv2s,n_cnxtt_mix,n_cnxtn_mix,n_effv2s_mix,n_effb2_mix,s_effv2m,n_effv2m_mix,s_effv2l,s_effv2l_u10
-python src/stack_mix.py smx22 mix $M lv                                     # LightGBM default seed
-for s in 1 2 3 4; do python src/stack_mix.py smx22_s$s mix $M lv,seed$s; done
-python src/bag_stack.py smx22_bag smx22,smx22_s1,smx22_s2,smx22_s3,smx22_s4
-python src/make_sub.py smx22_bag U12_smx22_bag                              # subs/U12_smx22_bag.csv
+M=cnn_v1,cnn_v4p,cnn_v4a,cnn_v4ap,cnn_v6,cnn_v7,n_pretrained,n_cnxt,s_regy,s_mbnv3,n_cnxtt,n_effb2,s_effv2s,n_cnxtt_mix,n_cnxtn_mix,n_effv2s_mix,n_effb2_mix,s_effv2m,n_effv2m_mix,s_effv2l,s_effv2l_u10,s_effv2l_u11
+python src/stack_mix.py smx23 mix $M lv                                     # LightGBM default seed
+for s in 1 2 3 4; do python src/stack_mix.py smx23_s$s mix $M lv,seed$s; done
+python src/bag_stack.py smx23_bag smx23,smx23_s1,smx23_s2,smx23_s3,smx23_s4
+python src/make_sub.py smx23_bag U13_smx23_bag                              # subs/U13_smx23_bag.csv
 ```
 
 Hardware used: laptop RTX 4060 (bf16), Kaggle T4 (`--amp fp16`), Modal A100 / H100 (`modal_run.py`, one fold per
