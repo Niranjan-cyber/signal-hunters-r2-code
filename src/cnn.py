@@ -20,6 +20,7 @@ ap.add_argument('--lvch', type=int, default=0)      # 1 = 4th input channel: pre
 ap.add_argument('--syn', type=float, default=0.0)  # prob. per row of a synthetic ETI positive (same prob. for a hard negative)
 ap.add_argument('--arch', default='resnet')         # 'resnet' (own) or 'timm:<name>' e.g. timm:efficientnet_b0 (ImageNet-pretrained)
 ap.add_argument('--dann', type=float, default=0.0)  # >0: domain-adversarial weight (GBT train vs unlabelled PKS test, gradient reversal)
+ap.add_argument('--mixup', type=float, default=0.0) # >0: MixUp Beta(alpha, alpha) on the placed input with soft targets (SETI 1st/2nd place)
 ap.add_argument('--simonly', type=int, default=0)   # 1 = only score saved ckpts on PKS-simulated validation
 ap.add_argument('--sim_s', type=float, default=0.92); ap.add_argument('--sim_seed', type=int, default=123)
 ap.add_argument('--sim_tag', default='')            # '' = training-time simulator; 't' = held-out simulator (s 0.75, seed 7)
@@ -50,6 +51,10 @@ def place(w, miss, gap):
     """(b,6,16,128) -> (b,3|4,H,128) at global time rows p*(16+gap)+r; 4th channel = panel level if gap carries levels."""
     z = None
     if gap.dim() == 2: z, gap = gap[:, 1:], gap[:, 0].long()
+    if a.arch == 'onoff':                                                         # per-panel stack for OnOffNet: (b, 6*C, 16, 128)
+        chans = [w, (1.0 - miss.float())[..., None].expand_as(w)]
+        if z is not None: chans.append(z[:, :, None, None].float().expand_as(w) / 2)
+        return torch.stack(chans, 2).reshape(w.shape[0], 6 * len(chans), 16, 128)
     b = w.shape[0]; out = torch.zeros(b, 4 if z is not None else 3, H, 128, device=w.device)
     r = torch.arange(16, device=w.device)
     for p in range(6):
@@ -142,7 +147,27 @@ class TimmNet(nn.Module):
         h = s.body.forward_features(F.interpolate(x, scale_factor=2, mode='nearest')); return torch.cat([h.mean((2, 3)), h.amax((2, 3))], 1)
     def forward(s, x): return s.head(s.feats(x))
 
+class OnOffNet(nn.Module):
+    """Explicit ON-vs-OFF comparison: a shared encoder per panel (time pooled, frequency kept), then per-frequency
+    ON-mean / ON-min / OFF-mean / OFF-max / (ON-min - OFF-max) maps, a 1D CNN along frequency and the classifier."""
+    def __init__(s, w):
+        super().__init__(); cin = 3 if a.lvch else 2; s.cin = cin
+        s.enc = nn.Sequential(nn.Conv2d(cin, w, 3, 1, 1, bias=False), nn.BatchNorm2d(w), nn.GELU(),
+                              Res(w, w, 1), Res(w, 2 * w, (2, 1)), Res(2 * w, 2 * w, 1), Res(2 * w, 2 * w, (2, 2)))
+        f = 2 * w
+        s.cmp = nn.Sequential(nn.Conv1d(5 * f, 4 * w, 5, 1, 2, bias=False), nn.BatchNorm1d(4 * w), nn.GELU(),
+                              nn.Conv1d(4 * w, 4 * w, 5, 2, 2, bias=False), nn.BatchNorm1d(4 * w), nn.GELU())
+        s.head = nn.Sequential(nn.Dropout(0.2), nn.Linear(8 * w, 9)); s.dom = None
+    def feats(s, x):
+        b = x.shape[0]; p = x.view(b * 6, s.cin, 16, 128)
+        h = s.enc(p).amax(2).view(b, 6, -1, 64)                                    # (b,6,F,64): time pooled, frequency kept
+        on, off = h[:, [0, 2, 4]], h[:, [1, 3, 5]]
+        z = torch.cat([on.mean(1), on.amin(1), off.mean(1), off.amax(1), on.amin(1) - off.amax(1)], 1)
+        g = s.cmp(z); return torch.cat([g.mean(2), g.amax(2)], 1)
+    def forward(s, x): return s.head(s.feats(x))
+
 def make_model():
+    if a.arch == 'onoff': return OnOffNet(a.width).to(dev)
     return (TimmNet(a.arch[5:]) if a.arch.startswith('timm:') else Net(a.width, a.deep)).to(dev).to(memory_format=torch.channels_last)
 
 class GradReverse(torch.autograd.Function):
@@ -213,6 +238,10 @@ for k in run_folds:
                     dl = model.dom(GradReverse.apply(torch.cat([fs, ft]), lam)).float().squeeze(1)
                     dy = torch.cat([torch.zeros(len(fs), device=dev), torch.ones(len(ft), device=dev)])
                     loss = F.cross_entropy(model.head(fs).float(), yb, label_smoothing=0.05) + a.dann * F.binary_cross_entropy_with_logits(dl, dy)
+                elif a.mixup > 0:                                                  # MixUp on the placed input, soft targets
+                    x = place(w, m, gg); lam = float(np.random.beta(a.mixup, a.mixup)); pi = torch.randperm(len(x), device=dev)
+                    logits = model(lam * x + (1 - lam) * x[pi]).float()
+                    loss = lam * F.cross_entropy(logits, yb, label_smoothing=0.05) + (1 - lam) * F.cross_entropy(logits, yb[pi], label_smoothing=0.05)
                 else:
                     loss = F.cross_entropy(model(place(w, m, gg)).float(), yb, label_smoothing=0.05)
             step += 1

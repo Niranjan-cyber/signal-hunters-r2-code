@@ -11,7 +11,7 @@ if cmd == 'run':
     args, folds = f'--name {name} ' + sys.argv[3], [int(f) for f in sys.argv[4].split(',')]
     gpu = sys.argv[5] if len(sys.argv) > 5 else 'L4'
     subprocess.run('modal deploy modal_run.py', shell=True, check=True)          # image embeds the current src/cnn.py
-    fn = modal.Function.from_name('sh-r2', 'run_fold')
+    fn = modal.Function.from_name('sh-r2' if os.environ.get('SH_TORCH', '2.5.1') == '2.5.1' else 'sh-r2-b200', 'run_fold')
     if gpu != 'L4': fn = fn.with_options(gpu=gpu)
     calls = {str(k): fn.spawn(args, k).object_id for k in folds}
     json.dump({'args': args, 'gpu': gpu, 'calls': calls}, open(ids_path, 'w'), indent=1)

@@ -1,15 +1,15 @@
 # Signal Hunters R2: learnings and decisions
 
 Running record of what we decided, why, and what we learned. The per-run numbers live in `LOG.md`, the uploads in
-`SUBMISSIONS.md`. Times are IST, 27 Oct 2026. Updated whenever a decision is taken or a lesson shows up.
+`SUBMISSIONS.md`. Times are IST, 27–28 Oct 2026. Updated whenever a decision is taken or a lesson shows up.
 
-## Current state (19:35)
-- Best public: **U5** `subs/U5_smx5.csv` = **0.9160**, 2nd (leader terminal-R 0.9213). Uploads today: 4 used, 1 left (U4 built but never uploaded).
-- U5 = mixed stacker on CNN v1 + v4p + v4a + v4ap + v6 + physics + panel-level features. Clean OOF 0.9538 / 0.1224, PKS-sim 0.9249 / 0.2086, held-out sim 0.9347 / 0.1794.
-- Public history: U1 0.8823 → U2 0.9017 → U3 0.9087 → U5 0.9160. Public now tracks held-out-sim gains ~1:1 (U3 → U5: +0.0073 vs +0.0068).
-- Remaining held-out headroom: scintillation 0.768, ETI 0.861; every other class ≥ 0.95.
-- In progress: v7 (synthetic ETI) folds 2–4 + L4 vs A100 timing on Modal (spawned calls); teammate lanes per `coord/BOARD.md`.
-- Deadline 28 Oct 10:00 IST, 5 uploads that day; repo goes public just before (checklist below).
+## Current state (28 Oct 06:05)
+- Best public: **U8** `subs/U8_smx14_a.csv` = **0.9337**, 2nd (leader Epoch 0.9397, gap 0.006). U8 is the private entry until something beats it on public.
+- **U9** `subs/U9_smx17_bag.csv` (md5 50e6bf8c74) = **public 0.9364, 4th** (Ctrl+C 0.9573, Packet Pushers 0.9525, Epoch 0.9397): U8 + MixUp versions of ConvNeXt-Nano, EffNetV2-S, EffNet-B2 (17 members), stacker averaged over 5 LightGBM seeds. Clean 0.9665 / 0.0986, PKS-sim 0.9413 / 0.1694, held-out 0.9477 / 0.1472 (vs U8: ΔLL −0.0027 3.6σ, ΔF1 +0.0008). Public expected ~0.934–0.935.
+- Running: `n_effv2m_mix` (EfficientNetV2-M + MixUp) on Niranjan's 2nd Modal account (profile n2), launched 05:58, ETA ~07:00 → U10 test ~07:30. Training cutoff 06:00: nothing new after this.
+- **GPU lane = Niranjan's n2 Modal account until Swarali is online (D74).** Swarali offline since ~02:30 (expected back 04:00, not back at 06:15). Her s_effv2m / s_nfl0 results sit on her Modal account until she pushes them.
+- Uploads: 10 on 28 Oct, U8 + U9 used → 8 left. Deadline 10:00 IST. Credits: n2 ~$14 left after V2-M; our 1st account ~$2; Swarali ~$7.5 minus her two runs.
+- Held-out headroom unchanged: scintillation ~0.80 (shared ceiling), ETI ~0.90; everything else ≥ 0.958.
 
 ## Decisions
 
@@ -69,11 +69,38 @@ Running record of what we decided, why, and what we learned. The per-run numbers
 | D52 | 20:20 | All Modal runs on A100 | A100 12 s/epoch vs L4 41 s/epoch (3.4x), cheaper per fold, identical metrics | L4 default |
 | D53 | 22:35 | Hold U7 (smx8a + RegNetY + MobileNetV3) | held-out ΔF1 +0.0011 (1.4σ), ΔLL n.s.; with exact 1:1 held-out→public calibration it would score ~0.9243, below the leader and inside noise | Upload for the expiring slot |
 | D54 | 22:35 | Treat held-out sim as an exact public predictor (public = held-out − 0.019) | U5 and U6 both sit 0.0187 below held-out; U5→U6 gain identical (+0.0072) | — |
+| D56 | 23:05 | U7 = smx11_all (U6 + RegNetY, MobileNetV3, ConvNeXt-Tiny, EfficientNet-B2) | held-out ΔF1 +0.0022 (2.2σ), ΔLL −0.0039 (3.5σ) vs U6; tied with + EffNet-B2 alone on held-out but better on SIM (+0.0055) and clean → more members, steadier for private. Public 0.9307 | smx11_effb2 (simpler, tied) |
+| D57 | 23:32 | All work stays in the private team repo; public code repo refreshed only at submission time | User direction; predictions must never be public | Working in the public repo |
+| D58 | 23:40 | Reject class log-biases (3rd time; family closed) | fitted on held-out half A, scored on half B: 0.9443 → 0.9437 | — |
+| D59 | 00:10 | Reject ON/OFF comparison network | single held-out 0.892–0.908; in stack ΔF1 +0.0008 (1.1σ): physics features already carry the ON/OFF rule | — |
+| D60 | 00:20 | Treat scintillation as a shared ceiling; spend compute on stronger backbones, not scint features | every single model 0.75–0.78 scint F1 on held-out; only backbone strength nudges it | Scint-specific features |
+| D61 | 00:45 | Keep MixUp (Beta 0.4, 25 ep) for pretrained fine-tuning | ConvNeXt-Tiny 0.9367 → 0.9411 held-out (+0.004, 4 of 5 folds up); SETI 1st/2nd-place precedent | — |
+| D62 | 00:50 | Scale EfficientNetV2, not ConvNeXt | ConvNeXt-Small 0.9372 ≈ Tiny 0.9367; EffNetV2-S 0.9395 (best family step); ConvNeXt-Small adds nothing in the stack (smx14_b ≤ smx14_a) | ConvNeXt-Base |
+| D63 | 00:55 | U8 = smx14_a (U7 + EffNetV2-S + ConvNeXt-Tiny MixUp) | held-out ΔF1 +0.0026 (2.6σ), ΔLL −0.0046 (4.6σ); ETI 0.885 → 0.896. Public 0.9337 (+0.0030) | smx14_b |
+| D64 | 01:05 | No new GPU provider (Runpod/Vast) tonight | bottleneck was launch latency on the teammate lane, not GPU supply; a new provider = 30–45 min of untested setup; Kaggle fp16 is the free fallback | Add Runpod/Vast |
+| D55 | 22:45 | Code link = NEW public repo github.com/Niranjan-cyber/signal-hunters-r2-code (code + docs only, fresh history); team repo stays private | Team repo history holds subs/*.csv (incl. U6), pseudo-labels and test probabilities: making it public would let any team upload our predictions | Flip team repo public; scrub history + force-push (breaks teammate clone) |
+| D65 | 02:00 | Use 5-seed LightGBM bagging for the final stack, not as an upload by itself | on U8: held-out ΔLL −0.0009 (3.2σ), F1 equal, 10 test rows change; single seeds alone span held-out F1 0.9464–0.9471 and PKS-sim 0.9401–0.9418 | upload smx14_bag |
+| D66 | 02:00 | Goal = best private score (and strong public): upload only models that beat the current best on held-out, with no class regression | private ranking uses each team's best-public upload, so every upload must be a model we want scored on private; held-out reproduces the PKS shift and has tracked public ~1:1; candidates differ on ~15 public rows, too few for public scores alone to choose | uploading untested variants |
+| D67 | 02:20 | Second Modal account (profile n2, $30) as Niranjan's GPU lane | 1st account down to ~$2; setup = volume + data upload + smoke test (15 min) | Kaggle T4 (too slow for timm 5-fold) |
+| D68 | 02:30 | Bake timm ImageNet weights into the Modal image; unique temp work dir per call | 10 parallel containers hit Hugging Face 429 on weight download (3 folds died); a warm container reused /tmp/w0 → FileExistsError | retry loop on download |
+| D69 | 02:35 | Take Swarali's round 2 (effv2s_mix, effb2_mix) onto n2 | she went offline without claiming them; no duplication | wait for her |
+| D70 | 02:55–03:10 | Close "MixUp version of an existing member" (4 runs) | singles up (ConvNeXt-Nano +0.003, B2 +0.003, B0 +0.0014, V2-S +0.0001) but every stack below the F1 bar: smx16_c +0.0007, smx16_ab −0.0006, smx17_all +0.0005 (LL −0.0019, 2.4σ), smx17_vb −0.0002 (LL −0.0023, 3.0σ) | more MixUp variants |
+| D71 | 03:00 | (user) Wait for Swarali's EffNetV2-M instead of re-running it | protocol forbids duplicating a hypothesis; she was expected at 04:00 | re-run V2-M at 03:00 |
+| D72 | 05:57 | (user) Re-run EffNetV2-M on n2 (n_effv2m_mix) | Swarali not back by 05:55; V2-M is the last bigger-backbone test that fits before the 08:30 final | V2-M + V2-L in parallel (V2-L lands ~08:00, too tight) |
+| D73 | 05:57 | (user) Upload U9 = smx17_bag although ΔF1 +0.0008 < +0.002 bar | better than U8 on every held-out guard (LL 3.6σ, no class worse than −0.0006), so it can only replace U8 as private entry if it also scores higher on public; locks in a candidate while Swarali is away; 8 slots remain | hold for a combined U10 |
+| D74 | 06:15 | (user) All GPU work runs on Niranjan's 2nd Modal account (profile n2) until Swarali is back online; her lane resumes only after she pushes s_effv2m / s_nfl0 and re-reads MESSAGES | her results/credits are unreachable while she is offline; n2 has ~$14 left after n_effv2m_mix; launch with MSYS_NO_PATHCONV=1 MODAL_IMAGE_BUILDER_VERSION=2025.06 | wait for her |
+| D75 | 06:15 | For the remaining choices, accept a stack on held-out ΔLL ≥ 3σ with F1 not worse and no class regression (not only ΔF1 ≥ +0.002) | public tracked held-out LL gains: U6→U7 ΔLL −0.0040 → public +0.0075; U7→U8 −0.0044 → +0.0030; U8→U9 −0.0027 (F1 only +0.0008) → +0.0027. Every ≥3σ LL gain has carried to public; F1 alone undercounts | keep the +0.002 F1 bar |
 
-## End-of-round checklist (deadline 28 Oct 10:00 IST per platform; 5 uploads on 28 Oct)
+## Upload plan for 28 Oct (10 slots, deadline 10:00)
+- U8 00:49 (0.9337). U9 = smx17_bag ~06:00 (D73).
+- U10 ~07:30 only if smx17 + n_effv2m_mix (+ s_nfl0 / s_effv2m if Swarali pushes) beats U9 on held-out (bagged, paired test).
+- ~08:30 final choice rebuilt from code (byte check); ~09:15 last upload only if it beats the best uploaded on held-out. Never probes or near-duplicates; ≥3 slots kept spare.
+
+## End-of-round checklist (deadline 28 Oct 10:00 IST per platform; 10 uploads on 28 Oct)
 - [ ] 09:00 final candidate rebuilt from repo code, byte-identical CSV check
 - [ ] 09:15 final uploads done (best overall + non-PL hedge)
-- [ ] 09:30 push final code, flip repo to public (`gh repo edit Niranjan-cyber/signal-hunters-r2 --visibility public --accept-visibility-change-consequences`)
+- [x] 22:45 public code repo created (no predictions); keep README reproduce steps in sync with the final candidate
+- [ ] 09:30 push final code to the PUBLIC code repo (copy src/ + docs, never subs/ or *.npy) (`gh repo edit Niranjan-cyber/signal-hunters-r2 --visibility public --accept-visibility-change-consequences`)
 - [ ] 09:35 submit repo link from the Submission tab; confirm it opens logged-out
 - [ ] 09:40 SUBMISSIONS.md final: selected upload, md5, public score
 
@@ -102,6 +129,21 @@ Running record of what we decided, why, and what we learned. The per-run numbers
 15. **Strong single models saturate inside a stack.** v6 cut CNN held-out log-loss by ~0.04 but the stack gained only −0.004: the stack already had the same information through other members. Judge members by stack gain, not standalone score.
 16. **Launchers are part of the experiment.** Four runs were lost today to dead local processes (memory reaps, session restart, detached-mode semantics). Use cloud-side spawning and check the job, not the launcher.
 17. **RAM was the binding constraint all day** (0.4–3 GB free on a 16 GB laptop, with chat apps and browsers open). Close them before an event day.
+18. **Parallel people need a protocol, not just access.** A shared board with claim-then-push plus a message log lets two agent sessions split hypotheses without duplicating work.
 19. **A reaped shell can leave its Python child running.** The killed timm smoke test kept 3.2 GB until found and stopped; after any reap, list python processes.
 20. **Measure GPUs instead of guessing.** A 2-epoch L4 vs A100 test (cents) showed the A100 is 3.4x faster and cheaper per fold.
-18. **Parallel people need a protocol, not just access.** A shared board with claim-then-push plus a message log lets two agent sessions split hypotheses without duplicating work.
+21. **ImageNet-pretrained backbones were the biggest late lever.** Own-CNN variants saturated the stack at ~+0.001 each; each pretrained round added +0.002–0.004 held-out and +0.003–0.0075 public (U5 → U8: 0.9160 → 0.9337). Try pretrained families in the first bake-off next time, not after 30 own-CNN variants.
+22. **Scale the family that scales.** EfficientNetV2-S beat every ConvNeXt; ConvNeXt-Small was no better than Tiny. Measure one size step per family before buying bigger models.
+23. **MixUp is a cheap regulariser for fine-tuned pretrained models** (+0.004 single-model held-out), the main idea worth taking from the SETI Kaggle winners.
+24. **A per-model class breakdown shows ceilings.** Every model sat at 0.75–0.78 on scintillation, which stopped us building more scint features and moved compute to backbones.
+25. **`.gitignore` patterns are directory-agnostic.** `oof/` also matched `results/*/oof/`, so `git add` silently committed nothing for hours; anchor with `/oof/` and check `git ls-tree` after a results push.
+26. **Check a teammate's comparisons against the log.** "Biggest single-model jump" compared against the wrong baseline (RegNetY instead of ConvNeXt-Tiny); the real lesson was "EfficientNetV2 scales, ConvNeXt doesn't".
+27. **Stale prompts cost runs.** The teammate launched s_v6w64 from an hour-old prompt after it had been cancelled on the board; agents must re-read MESSAGES right before launching.
+28. **Never make a working repo public.** Its history held submission CSVs and test predictions; a separate code-only public repo with fresh history solved the code-link requirement safely.
+29. **Goal: the best model on the PRIVATE leaderboard, and strong on public too.** The platform scores each team on the private 70% of its best-public upload, so every upload must be a model we would be happy to have as the private entry. We therefore upload only models that improve on the held-out simulator (our best predictor of the hidden PKS test) with no class regression; then whichever upload wins on public is also a strong private model. Our candidates differ on only 10–50 test rows (3–15 public rows), so small public differences between them say little; held-out decides.
+30. **Parallel cloud launches can be rate-limited by third parties.** Ten containers downloading ImageNet weights at once got HTTP 429 from Hugging Face; bake weights into the image at build time.
+31. **Warm containers keep /tmp.** A fold that landed in the smoke-test container crashed on an existing work dir; use a fresh temp dir per call.
+32. **A new cloud account is not identical to the old one.** The new Modal workspace defaulted to an image builder version the client didn't support; pin `MODAL_IMAGE_BUILDER_VERSION` and smoke-test before spending credit.
+33. **A trick that helps single models can be redundant in a stack.** MixUp improved four singles by up to +0.003 but added nothing to F1 in a stack that already had one MixUp member.
+34. **Bag the stacker before comparing stacks.** Changing only the LightGBM seed moved held-out F1 by ~0.0007, the same size as the member gains being tested; 5-seed averages make comparisons fair and turned part of a log-loss gain into F1.
+35. **Results on a teammate's account are a single point of failure.** Her runs finished but stayed unreachable for 4+ hours while she slept. Next time: have the job push small results to the shared repo (or a shared volume) automatically, and agree on a hand-off time before anyone goes offline.

@@ -39,6 +39,8 @@ for c in cnns:
         if H is not None: H[f'{c}_{k}'] = np.log(ht[:, k] + 1e-6)
 P = dict(objective='multiclass', num_class=9, learning_rate=0.03, num_leaves=15, min_child_samples=30, feature_fraction=0.7,
          bagging_fraction=0.8, bagging_freq=1, lambda_l2=3, verbose=-1)
+sd = [int(e[4:]) for e in extra if e.startswith('seed')]                     # 'seed<N>' in extra = LightGBM seed (bagging run)
+if sd: P.update(seed=sd[0], bagging_seed=sd[0], feature_fraction_seed=sd[0], data_random_seed=sd[0])
 oc, os_, oh, tst = np.zeros((len(y), 9)), np.zeros((len(y), 9)), np.zeros((len(y), 9)), np.zeros((len(T), 9))
 for k in range(5):
     a, b = folds != k, folds == k
